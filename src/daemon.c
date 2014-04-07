@@ -27,6 +27,12 @@
 
 #define IMAGE_PATH   PREFIX
 
+typedef enum {
+	ICON_SPEAKER,
+	ICON_MONITOR,
+	ICON_UNKNOWN
+} Icon;
+
 typedef struct {
     GObject parent;
 
@@ -40,6 +46,7 @@ typedef struct {
     GdkPixbuf *icon_low;
     GdkPixbuf *icon_off;
     GdkPixbuf *icon_muted;
+    GdkPixbuf *icon_monitor;
 
     GdkPixbuf *image_progressbar_empty;
     GdkPixbuf *image_progressbar_full;
@@ -61,6 +68,7 @@ GType volume_object_get_type(void);
 gboolean volume_object_notify(VolumeObject* obj,
                               gint value_in,
                               gboolean muted,
+                              gpointer *icon,
                               GError** error);
 
 #define VOLUME_TYPE_OBJECT \
@@ -118,6 +126,7 @@ time_handler(VolumeObject *obj)
 gboolean volume_object_notify(VolumeObject* obj,
                               gint value,
                               gboolean muted,
+                              gpointer *iconStr,
                               GError** error) {
     g_assert(obj != NULL);
 
@@ -136,17 +145,33 @@ gboolean volume_object_notify(VolumeObject* obj,
         print_debug_ok(obj->debug);
     }
 
-    // choose icon
-    if (obj->muted)
-        set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_muted);
-    else if (obj->volume >= 75)
-        set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_high);
-    else if (obj->volume >= 50)
-        set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_medium);
-    else if (obj->volume >= 25)
-        set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_low);
-    else
-        set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_off);
+	Icon icon;
+    if (strcmp("speaker", iconStr) == 0) {
+		icon = ICON_SPEAKER;
+	} else if (strcmp("monitor", iconStr) == 0) {
+		icon = ICON_MONITOR;
+	} else {
+		icon = ICON_UNKNOWN;
+	}
+	
+	switch (icon) {
+		case ICON_UNKNOWN:
+		case ICON_SPEAKER:
+			if (obj->muted)
+				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_muted);
+			else if (obj->volume >= 75)
+				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_high);
+			else if (obj->volume >= 50)
+				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_medium);
+			else if (obj->volume >= 25)
+				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_low);
+			else
+				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_off);
+			break;
+		case ICON_MONITOR:
+			set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_monitor);
+			break;
+	}
 
     // prepare and set progress bar
     gint width_full = obj->width_progressbar * obj->volume / 100;
@@ -304,6 +329,9 @@ int main(int argc, char* argv[]) {
     status->icon_muted = gdk_pixbuf_new_from_file(IMAGE_PATH "volume_muted.svg", &error);
     if (error != NULL)
         handle_error("Couldn't load volume_muted.svg.", error->message, TRUE);
+    status->icon_monitor = gdk_pixbuf_new_from_file(IMAGE_PATH "monitor.svg", &error);
+    if (error != NULL)
+    	handle_error("Couldn't load monitor.svg.", error->message, TRUE);
 
     // progress bar
     status->image_progressbar_empty = gdk_pixbuf_new_from_file(IMAGE_PATH "progressbar_empty.png", &error);
