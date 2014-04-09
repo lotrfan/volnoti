@@ -21,7 +21,7 @@ PKG_CHECK_MODULES([CAIRO], [cairo])
 PKG_CHECK_MODULES([GDK_PIXBUF], [gdk-pixbuf-2.0])
 
 # Checks for header files.
-AC_CHECK_HEADERS([stdlib.h string.h unistd.h])
+AC_CHECK_HEADERS([stdlib.h string.h unistd.h math.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
