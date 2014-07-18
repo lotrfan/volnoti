@@ -21,7 +21,7 @@
 #include <glib.h>
 #include <dbus/dbus-glib.h>
 #include <unistd.h>
-#include <math.h>
+
 #include "common.h"
 #include "gopt.h"
 
@@ -82,9 +82,6 @@ int main(int argc, const char* argv[]) {
         if (volume > 100 || volume < 0)
             print_usage(argv[0], TRUE);
     }
-
-    // round volume
-    volume = (int)(round(volume / 5.0) * 5.0);
 
     DBusGConnection *bus = NULL;
     DBusGProxy *proxy = NULL;

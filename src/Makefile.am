@@ -27,7 +27,6 @@ volnoti_LDADD = \
 
 volnoti_show_SOURCES = client.c value-client-stub.h $(COMMON)
 volnoti_show_LDADD = \
-					 -lm \
                      @DBUS_LIBS@ \
                      @DBUS_GLIB_LIBS@
 
