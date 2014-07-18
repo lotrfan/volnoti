@@ -18,6 +18,7 @@
  
 #include <stdlib.h>
 #include <unistd.h>
+#include <string.h>
 #include <glib.h>
 #include <dbus/dbus-glib.h>
 
@@ -26,12 +27,6 @@
 #include "notification.h"
 
 #define IMAGE_PATH   PREFIX
-
-typedef enum {
-	ICON_SPEAKER,
-	ICON_MONITOR,
-	ICON_UNKNOWN
-} Icon;
 
 typedef struct {
     GObject parent;
@@ -145,33 +140,44 @@ gboolean volume_object_notify(VolumeObject* obj,
         print_debug_ok(obj->debug);
     }
 
-	Icon icon;
+    static char path[sizeof(IMAGE_PATH "/") + 100];
+    static char * const path_var = &path[sizeof(IMAGE_PATH "/")-1]; // sizeof includes the ending NUL, which is the start of the variable part
+    static int path_init = 0;
+    static char lastIconStr[100] = {0};
+    static GdkPixbuf *lastIcon = NULL;
+    if (!path_init) {
+        strcpy(path, IMAGE_PATH "/");
+        path_init = 1;
+    }
     if (strcmp("speaker", iconStr) == 0) {
-		icon = ICON_SPEAKER;
-	} else if (strcmp("monitor", iconStr) == 0) {
-		icon = ICON_MONITOR;
-	} else {
-		icon = ICON_UNKNOWN;
-	}
-	
-	switch (icon) {
-		case ICON_UNKNOWN:
-		case ICON_SPEAKER:
-			if (obj->muted)
-				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_muted);
-			else if (obj->volume >= 75)
-				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_high);
-			else if (obj->volume >= 50)
-				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_medium);
-			else if (obj->volume >= 25)
-				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_low);
-			else
-				set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_off);
-			break;
-		case ICON_MONITOR:
-			set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_monitor);
-			break;
-	}
+        if (obj->muted)
+            set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_muted);
+        else if (obj->volume >= 75)
+            set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_high);
+        else if (obj->volume >= 50)
+            set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_medium);
+        else if (obj->volume >= 25)
+            set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_low);
+        else
+            set_notification_icon(GTK_WINDOW(obj->notification), obj->icon_off);
+    } else {
+        if (lastIcon == NULL || strcmp(lastIconStr, iconStr) != 0) {
+            size_t len = strnlen((char*)iconStr, 100);
+            GError *error = NULL;
+            if (len == 100) return FALSE;
+            if (lastIcon != NULL) g_object_unref(lastIcon);
+            strncpy(path_var, iconStr, 100);
+            lastIcon = gdk_pixbuf_new_from_file(path, &error);
+            if (error != NULL) {
+                handle_error("Couldn't load requested icon.", error->message, FALSE);
+                lastIcon = NULL;
+                return FALSE;
+            }
+            strncpy(lastIconStr, iconStr, 100);
+        }
+
+        set_notification_icon(GTK_WINDOW(obj->notification), lastIcon);
+    }
 
     // prepare and set progress bar
     gint width_full = obj->width_progressbar * obj->volume / 100;
